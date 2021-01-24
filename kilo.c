@@ -1,3 +1,5 @@
+/*** includes ***/
+
 #include <termios.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -5,17 +7,23 @@
 #include <stdio.h>
 #include <errno.h>
 
+/*** defines ***/
+
+#define CTRL_KEY(k) ((k) & 0x1f)
+
+/*** data ***/
+
 /** Struct created to store the original state of termios to set it back on exit .
  * **/
 struct termios orig_termios;
 
+
+/*** terminal ***/
 void die(const char *s) {
     perror(s);
     exit(1);
 }
 
-/** Method to disable Raw mode - Reset terminal flags to original state. 
- * **/
 void disableRawMode() {
     if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios) == -1) 
         die("tcsetattr");
@@ -73,20 +81,41 @@ void enableRawMode() {
         die("tcsetattr");
 }
 
+char editorReadKey() {
+    int nread;
+    char c;
+    while ((nread = read(STDIN_FILENO, &c, 1)) != 1) {
+        if (nread == -1 && errno != EAGAIN) die("read");
+    }
+    return c;
+}
+
+/*** input ***/
+
+void editorProcessKeypress() {
+    char c = editorReadKey();
+
+    switch(c) {
+        case CTRL_KEY('q'):
+            exit(0);
+            break;
+    }
+}
+
+/*** output ***/
+
+void editorRefreshScreen() {
+    write(STDOUT_FILENO, "\x1b[2J", 4);
+}
+ 
+/*** init ***/
+
 int main() {
     enableRawMode();
 
     while (1) { 
-        char c = '\0';
-        if (read(STDIN_FILENO, &c, 1) == -1 && errno != EAGAIN)
-            die("read");
-
-        if (iscntrl(c)) {
-            printf("%d\n", c);
-        } else {
-            printf("%d ('%c')\r\n", c, c);
-        }
-        if (c == 'q') break;
+        editorRefreshScreen();
+        editorProcessKeypress();
     }
     return 0;
 }
