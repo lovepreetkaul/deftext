@@ -93,6 +93,15 @@ char editorReadKey() {
 
 /*** output ***/
 
+
+/** Draw the tildes just like vim.**/
+void editorDrawRows() {
+    int y;
+    for (y = 0; y < 24; y++) {
+        write(STDOUT_FILENO, "~\r\n", 3);
+    }
+}
+
 void editorRefreshScreen() {
     /** Clears the screen. Refer to vt100 terminal sequences.
      * \x1b - 27. Control character. Along with [ creates an escape sequence.
@@ -104,6 +113,16 @@ void editorRefreshScreen() {
     /** H - Reposition cursor to the defined width; height. defaults to 1;1 so
      *      not specified.**/
     write(STDOUT_FILENO, "\x1b[H", 3);
+
+    editorDrawRows();
+
+    write(STDOUT_FILENO, "\x1b[H", 3);
+}
+
+
+void editorCleanScreen() {
+    write(STDOUT_FILENO, "\x1b[2J", 4);
+    write(STDOUT_FILENO, "\x1b[H", 3);
 }
 
 
@@ -114,7 +133,7 @@ void editorProcessKeypress() {
 
     switch(c) {
         case CTRL_KEY('q'):
-            editorRefreshScreen();
+            editorCleanScreen();
             exit(0);
             break;
     }
