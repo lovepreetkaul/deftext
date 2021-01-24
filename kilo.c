@@ -90,6 +90,23 @@ char editorReadKey() {
     return c;
 }
 
+
+/*** output ***/
+
+void editorRefreshScreen() {
+    /** Clears the screen. Refer to vt100 terminal sequences.
+     * \x1b - 27. Control character. Along with [ creates an escape sequence.
+     * J    - Command to erase screen. 2 being a parameter to clean the entire
+     *        screen.
+     * **/
+    write(STDOUT_FILENO, "\x1b[2J", 4);
+
+    /** H - Reposition cursor to the defined width; height. defaults to 1;1 so
+     *      not specified.**/
+    write(STDOUT_FILENO, "\x1b[H", 3);
+}
+
+
 /*** input ***/
 
 void editorProcessKeypress() {
@@ -97,15 +114,10 @@ void editorProcessKeypress() {
 
     switch(c) {
         case CTRL_KEY('q'):
+            editorRefreshScreen();
             exit(0);
             break;
     }
-}
-
-/*** output ***/
-
-void editorRefreshScreen() {
-    write(STDOUT_FILENO, "\x1b[2J", 4);
 }
  
 /*** init ***/
