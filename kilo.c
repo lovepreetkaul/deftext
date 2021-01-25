@@ -6,6 +6,7 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <errno.h>
+#include <sys/ioctl.h>
 
 /*** defines ***/
 
@@ -13,10 +14,15 @@
 
 /*** data ***/
 
-/** Struct created to store the original state of termios to set it back on exit .
- * **/
-struct termios orig_termios;
+struct editorConfig {
+    int screenrows;
+    int screencols;
+    /** Struct created to store the original state of termios to set it back on exit .
+    * **/
+    struct termios orig_termios;
+};
 
+struct editorConfig E;
 
 /*** terminal ***/
 void die(const char *s) {
@@ -25,17 +31,17 @@ void die(const char *s) {
 }
 
 void disableRawMode() {
-    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios) == -1) 
+    if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &E.orig_termios) == -1) 
         die("tcsetattr");
 }
 
 void enableRawMode() {
-    if (tcgetattr(STDIN_FILENO, &orig_termios) == -1)
+    if (tcgetattr(STDIN_FILENO, &E.orig_termios) == -1)
         die("tcgetattr");
 
     atexit(disableRawMode);
 
-    struct termios raw = orig_termios;
+    struct termios raw = E.orig_termios;
 
     /** Sets the Input Flags for the termios.
      *
@@ -90,6 +96,20 @@ char editorReadKey() {
     return c;
 }
 
+int getWindowSize(int *rows, int *columns) {
+    struct winsize ws;
+
+    if (1 || ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0 ) { 
+        if(write(STDOUT_FILENO, "\x1b[999C\x1b[999B", 12) != 12) return -1;
+        editorReadKey();
+        return -1;
+    } else {
+        *columns = ws.ws_col;
+        *rows = ws.ws_row;
+        return 0;
+    }
+}
+
 
 /*** output ***/
 
@@ -97,7 +117,7 @@ char editorReadKey() {
 /** Draw the tildes just like vim.**/
 void editorDrawRows() {
     int y;
-    for (y = 0; y < 24; y++) {
+    for (y = 0; y < E.screenrows; y++) {
         write(STDOUT_FILENO, "~\r\n", 3);
     }
 }
@@ -141,8 +161,14 @@ void editorProcessKeypress() {
  
 /*** init ***/
 
+void initEditor() {
+    if (getWindowSize(&E.screenrows, &E.screencols) == -1) 
+        die("getWindowSize");
+}
+
 int main() {
     enableRawMode();
+    initEditor();
 
     while (1) { 
         editorRefreshScreen();
