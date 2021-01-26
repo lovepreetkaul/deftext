@@ -18,6 +18,7 @@
 /*** data ***/
 
 struct editorConfig {
+    int cx, cy;
     int screenrows;
     int screencols;
     /** Struct created to store the original state of termios to set it back on exit .
@@ -168,6 +169,13 @@ void editorDrawRows(struct abuf *ab) {
             int welcomelen = snprintf(welcome, sizeof(welcome),
                 "Deftext Editor -- version %s", DEFTEXT_VERSION);
             if (welcomelen > E.screencols) welcomelen = E.screencols;
+            int padding = (E.screencols - welcomelen)/2;
+            
+            if (padding) {
+                abAppend(ab, "~", 1);
+                padding--;
+            }
+            while(padding--) abAppend(ab, " ", 1);
             abAppend(ab, welcome, welcomelen);
         } else {
             abAppend(ab, "~", 1);
@@ -191,7 +199,13 @@ void editorRefreshScreen() {
 
     editorDrawRows(&ab);
 
-    abAppend(&ab, "\x1b[H", 3);
+    char buf[32];
+
+    /** The one is added to convert from 0 indexed C values to 1 indexed vt100
+     * values**/
+    snprintf(buf, sizeof(buf), "\x1b[%d;%dH", E.cy + 1, E.cx + 1);
+
+    abAppend(&ab, buf, strlen(buf));
     abAppend(&ab, "\x1b[?25h", 6);
 
     write(STDOUT_FILENO, ab.b, ab.len);
@@ -216,6 +230,24 @@ void editorCleanScreen() {
 
 /*** input ***/
 
+void editorMoveCursor(char key) {
+    switch (key) {
+        case 'h':
+            E.cx--;
+            break;
+        case 'l':
+            E.cx++;
+            break;
+        case 'k':
+            E.cy--;
+            break;
+        case 'j':
+            E.cy++;
+            break;
+    }
+}
+
+
 void editorProcessKeypress() {
     char c = editorReadKey();
 
@@ -224,12 +256,21 @@ void editorProcessKeypress() {
             editorCleanScreen();
             exit(0);
             break;
+        case 'h':
+        case 'j':
+        case 'k':
+        case 'l':
+            editorMoveCursor(c);
+            break;
     }
 }
  
 /*** init ***/
 
 void initEditor() {
+    E.cx = 0;
+    E.cy = 0;
+
     if (getWindowSize(&E.screenrows, &E.screencols) == -1) 
         die("getWindowSize");
 }
