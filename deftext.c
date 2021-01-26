@@ -11,6 +11,8 @@
 
 /*** defines ***/
 
+#define DEFTEXT_VERSION "0.0.1"
+
 #define CTRL_KEY(k) ((k) & 0x1f)
 
 /*** data ***/
@@ -161,8 +163,17 @@ void abFree(struct abuf *ab) {
 void editorDrawRows(struct abuf *ab) {
     int y;
     for (y = 0; y < E.screenrows; y++) {
-        abAppend(ab, "~", 1);
-
+        if (y == E.screenrows/3) {
+            char welcome[80];
+            int welcomelen = snprintf(welcome, sizeof(welcome),
+                "Deftext Editor -- version %s", DEFTEXT_VERSION);
+            if (welcomelen > E.screencols) welcomelen = E.screencols;
+            abAppend(ab, welcome, welcomelen);
+        } else {
+            abAppend(ab, "~", 1);
+        }
+        
+        abAppend(ab, "\x1b[K", 3);
         if (y < E.screenrows - 1) {
             abAppend(ab, "\r\n", 2);
         }
@@ -172,20 +183,16 @@ void editorDrawRows(struct abuf *ab) {
 void editorRefreshScreen() {
     struct abuf ab = ABUF_INIT;
 
-    /** Clears the screen. Refer to vt100 terminal sequences.
-     * \x1b - 27. Control character. Along with [ creates an escape sequence.
-     * J    - Command to erase screen. 2 being a parameter to clean the entire
-     *        screen.
-     * **/
-    abAppend(&ab, "\x1b[2J", 4);
-
-    /** H - Reposition cursor to the defined width; height. defaults to 1;1 so
-     *      not specified.**/
+    /**
+     * ?25 - Undocumented argument to below commands to hide/show cursor.
+     * l/h - used to enable/disable various terminal features**/
+    abAppend(&ab, "\x1b[?25l", 6);
     abAppend(&ab, "\x1b[H", 3);
 
     editorDrawRows(&ab);
 
     abAppend(&ab, "\x1b[H", 3);
+    abAppend(&ab, "\x1b[?25h", 6);
 
     write(STDOUT_FILENO, ab.b, ab.len);
     abFree(&ab);
@@ -193,7 +200,16 @@ void editorRefreshScreen() {
 
 
 void editorCleanScreen() {
+
+    /** Clears the screen. Refer to vt100 terminal sequences.
+     * \x1b - 27. Control character. Along with [ creates an escape sequence.
+     * J    - Command to erase screen. 2 being a parameter to clean the entire
+     *        screen.
+     * **/
     write(STDOUT_FILENO, "\x1b[2J", 4);
+
+    /** H - Reposition cursor to the defined width; height. defaults to 1;1 so
+     *      not specified.**/
     write(STDOUT_FILENO, "\x1b[H", 3);
 }
 
