@@ -20,6 +20,7 @@ enum editorKey {
     ARROW_RIGHT,
     ARROW_UP,
     ARROW_DOWN,
+    DEL_KEY,
     HOME_KEY,
     END_KEY,
     PAGE_UP,
@@ -28,10 +29,17 @@ enum editorKey {
 
 /*** data ***/
 
+typedef struct erow {
+    int size;
+    char *chars;
+} erow;
+
 struct editorConfig {
     int cx, cy;
     int screenrows;
     int screencols;
+    int numrows;
+    erow row;
     /** Struct created to store the original state of termios to set it back on exit .
     * **/
     struct termios orig_termios;
@@ -121,6 +129,7 @@ int editorReadKey() {
                 if (seq[2] == '~') {
                     switch(seq[1]) {
                         case '1': return HOME_KEY;
+                        case '3': return DEL_KEY;
                         case '4': return END_KEY;
                         case '5': return PAGE_UP;
                         case '6': return PAGE_DOWN;
@@ -182,6 +191,19 @@ int getWindowSize(int *rows, int *cols) {
         *rows = ws.ws_row;
         return 0;
     }
+}
+
+/*** file i/o ***/
+
+void editorOpen() {
+    char *line = "Hello, world!";
+    ssize_t linelen = 13;
+
+    E.row.size = linelen;
+    E.row.chars = malloc(linelen + 1);
+    memcpy(E.row.chars, line, linelen);
+    E.row.chars[linelen] = '\0';
+    E.numrows = 1;
 }
 
 /*** append buffer ***/
@@ -306,6 +328,14 @@ void editorProcessKeypress() {
             exit(0);
             break;
 
+        case HOME_KEY:
+            E.cx = 0;
+            break;
+
+        case END_KEY:
+            E.cx = E.screencols - 1;
+            break;
+
         case PAGE_UP:
         case PAGE_DOWN:
             {
@@ -329,6 +359,7 @@ void editorProcessKeypress() {
 void initEditor() {
     E.cx = 0;
     E.cy = 0;
+    E.numrows = 0;
 
     if (getWindowSize(&E.screenrows, &E.screencols) == -1) 
         die("getWindowSize");
@@ -337,6 +368,7 @@ void initEditor() {
 int main() {
     enableRawMode();
     initEditor();
+    editorOpen();
 
     while (1) { 
         editorRefreshScreen();
