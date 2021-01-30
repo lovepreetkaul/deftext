@@ -1,5 +1,9 @@
 /*** includes ***/
 
+#define _DEFAULT_SOURCE
+#define _BSD_SOURCE
+#define _GNU_SOURCE
+
 #include <termios.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -7,6 +11,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <sys/ioctl.h>
+#include <sys/types.h>
 #include <string.h>
 
 /*** defines ***/
@@ -41,7 +46,7 @@ struct editorConfig {
     int numrows;
     erow row;
     /** Struct created to store the original state of termios to set it back on exit .
-    * **/
+    * Populated using the terminal config.**/
     struct termios orig_termios;
 };
 
@@ -204,7 +209,7 @@ void editorOpen(char *filename) {
     ssize_t linelen;
     linelen = getline(&line, &linecap, fp);
     
-    if (linelen != 1) {
+    if (linelen != -1) {
         while (linelen > 0 && (line[linelen - 1] == '\n') ||
                               (line[linelen -1] == '\r' ))
             linelen--;
@@ -250,7 +255,7 @@ void editorDrawRows(struct abuf *ab) {
     int y;
     for (y = 0; y < E.screenrows; y++) {
         if (y >= E.numrows) {
-            if (y == E.screenrows/3) {
+            if (E.numrows == 0 && y == E.screenrows/3) {
                 char welcome[80];
                 int welcomelen = snprintf(welcome, sizeof(welcome),
                     "Deftext Editor -- version %s", DEFTEXT_VERSION);
