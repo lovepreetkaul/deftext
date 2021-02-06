@@ -214,6 +214,7 @@ int editorRowCxToRx(erow *row, int cx) {
             rx += (DEFTEXT_TAB_STOP - 1) - (rx % DEFTEXT_TAB_STOP);
         rx++;
     }
+    return rx;
 }
 
 void editorUpdateRow(erow *row) {
